@@ -6,6 +6,7 @@ const puppeteer = require('puppeteer');
 const tmp = require('tmp');
 const winston = require('winston');
 const createPuppeteerPool = require('puppeteer-pool').default;
+require('dotenv').config();
 
 const logger = new winston.Logger({
   level: process.env.SCREENIE_LOG_LEVEL || 'info',
@@ -31,6 +32,9 @@ const imageSize = {
 const serverPort = process.env.SCREENIE_PORT || 3000;
 const supportedFormats = ['jpg', 'jpeg', 'pdf', 'png'];
 const allowFileScheme = process.env.SCREENIE_ALLOW_FILE_SCHEME || false;
+const userName = process.env.SCREENIE_USERNAME || '';
+const password = process.env.SCREENIE_PASSWORD || '';
+const baseUrl = process.env.SCREENIE_BASEURL || '';
 
 const app = new Koa();
 logger.verbose('Created KOA server');
@@ -86,6 +90,15 @@ app.use(function*(next) {
         logger.verbose('Set viewport for page');
         return this.state.page.setViewport(size);
       })
+      .then(() => {
+        if (userName && password){
+          logger.verbose('Setting username & password');
+          return this.state.page.authenticate({
+            username:userName, 
+            password:password
+          }); 
+        }
+      })
       .catch(error => {
         pageError = error;
         logger.verbose(`Invalidating instance with PID ${pid}`);
@@ -120,10 +133,12 @@ app.use(function*(next) {
     this.throw(403);
   }
 
-  logger.verbose(`Attempting to load ${url}`);
+  let tmpUrl = url.replace(/^(?:\/\/|[^\/]+)*/, baseUrl);
+
+  logger.verbose(`Attempting to load ${tmpUrl}`);
 
   yield page
-    .goto(url)
+    .goto(tmpUrl)
     .then(screenshotDelay)
     .catch(() => (gotoError = true));
 
@@ -177,12 +192,7 @@ app.use(function*(next) {
     yield page
       .screenshot({
         type: format === 'jpg' ? 'jpeg' : format,
-        clip: {
-          x: 0,
-          y: 0,
-          width: width,
-          height: height,
-        },
+        fullPage: true,
         omitBackground: true,
       })
       .then(response => (this.body = response))
