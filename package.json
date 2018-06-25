@@ -27,6 +27,7 @@
     "url": "https://github.com/eliksir/screenie-server/issues"
   },
   "dependencies": {
+    "dotenv": "^6.0.0",
     "koa": "1.4.1",
     "puppeteer": "1.0.0",
     "puppeteer-pool": "eliksir/puppeteer-pool#v1.3.1",
